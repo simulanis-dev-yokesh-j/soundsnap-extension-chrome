@@ -1,0 +1,47 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Trigger on tags like v1.0.0, v0.2.1, etc.
+
+permissions:
+  contents: write # Needed to create releases and upload assets
+
+jobs:
+  build_and_release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        # Extracts the version number from the tag (e.g., v1.0.0 -> 1.0.0)
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Archive extension files
+        run: |
+          mkdir release_package
+          cp README.md release_package/
+          cp background.js release_package/
+          cp content.js release_package/
+          cp manifest.json release_package/
+          cp popup.html release_package/
+          cp -r images release_package/
+          cd release_package
+          zip -r ../Download-Assistant-Soundsnap-v${{ env.VERSION }}.zip .
+          cd ..
+        shell: bash
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Download-Assistant-Soundsnap-v${{ env.VERSION }}.zip
+          tag_name: ${{ github.ref }}
+          name: Release v${{ env.VERSION }}
+          body: "Release v${{ env.VERSION }}. See CHANGELOG.md or commit history for details."
+          draft: false
+          prerelease: false 
