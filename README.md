@@ -9,6 +9,10 @@ A simple Chrome extension to help download sound effects from [Soundsnap](https:
 *   Ensures the downloaded file has an `.mp3` extension.
 *   Uses dynamic content detection to add buttons to sounds loaded after initial page load.
 
+Below is an example of how the download button appears on Soundsnap:
+
+![Download Button Reference](images/reference_image.png)
+
 ## Installation
 
 There are two ways to install the Download Assistant:
