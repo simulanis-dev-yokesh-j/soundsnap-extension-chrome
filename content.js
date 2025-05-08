@@ -1,134 +1,140 @@
-function addDownloadButton(audioElement) {
-  const src = audioElement.getAttribute('src');
-  if (src && src.startsWith('/play?')) {
-    const downloadUrl = `https://www.soundsnap.com${src}`;
-    
-    let iconSrc;
-    try {
-      // Check if chrome.runtime and getURL are available before calling
-      if (!(chrome && chrome.runtime && chrome.runtime.getURL)) {
-        console.warn('Download Assistant: chrome.runtime.getURL is not available. Cannot create download button. This might happen if the extension was reloaded or updated.');
-        return; // Stop if runtime is not available
-      }
-      iconSrc = chrome.runtime.getURL('images/icon48.png');
-    } catch (e) {
-      if (e.message.toLowerCase().includes("extension context invalidated")) {
-        console.warn('Download Assistant: Extension context invalidated. Cannot create download button. Please refresh the page if issues persist.');
-        // Optionally, disconnect the observer if the context is gone for good
-        // if (observer) observer.disconnect(); 
-        return; // Stop if context is invalidated
-      } else {
-        console.error('Download Assistant: Error getting icon URL:', e);
-        return; // Stop on other errors getting the icon
-      }
+function addDownloadButtonToContainer(containerElement) {
+  let iconSrc;
+  try {
+    if (!(chrome && chrome.runtime && chrome.runtime.getURL)) {
+      console.warn('Download Assistant: chrome.runtime.getURL is not available.'); return;
     }
-
-    const iconButton = document.createElement('img');
-    iconButton.src = iconSrc;
-    iconButton.alt = 'Download sound';
-    iconButton.style.width = '24px'; 
-    iconButton.style.height = '24px'; 
-    iconButton.style.verticalAlign = 'middle';
-    iconButton.style.marginRight = '5px'; // Space between icon and text
-
-    const textLabel = document.createElement('span');
-    textLabel.textContent = 'Download';
-    textLabel.style.verticalAlign = 'middle';
-    textLabel.style.fontSize = '12px'; // Optional: adjust font size
-
-    const buttonContainer = document.createElement('span'); // Using span, styled as inline-block
-    buttonContainer.style.display = 'inline-flex'; // Align items inline
-    buttonContainer.style.alignItems = 'center'; // Vertically align icon and text
-    buttonContainer.style.marginLeft = '10px';
-    buttonContainer.style.cursor = 'pointer';
-    buttonContainer.title = 'Download'; // Tooltip on the whole container
-
-    buttonContainer.appendChild(iconButton);
-    buttonContainer.appendChild(textLabel);
-
-    buttonContainer.classList.add('soundsnap-download-button');
-
-    buttonContainer.onclick = (event) => {
-      event.stopPropagation(); 
-      event.preventDefault(); 
-
-      // Suggest a filename based on the URL
-      const pathParts = downloadUrl.split('/');
-      const suggestedFilename = pathParts[pathParts.length - 1].split('?')[0] || "sound.mp3";
-      
-      let userFilename = window.prompt("Enter filename (e.g., sound.mp3):", suggestedFilename);
-      
-      // If the user clicks "Cancel" or enters an empty name, don't proceed
-      if (userFilename === null || userFilename.trim() === "") {
-        console.log("Download cancelled by user or empty filename.");
-        return;
-      }
-
-      // Basic sanitation: remove characters that are problematic in filenames
-      // This is a simple example; more robust sanitation might be needed.
-      userFilename = userFilename.replace(/[<>:"/\\|?*]+/g, '_');
-
-      // Ensure it ends with .mp3 if it doesn't have an extension or has a different one
-      if (!userFilename.toLowerCase().endsWith('.mp3')) {
-        if (userFilename.includes('.')) { // has some extension
-            userFilename = userFilename.substring(0, userFilename.lastIndexOf('.')) + '.mp3';
-        } else { // no extension
-            userFilename = userFilename + '.mp3';
-        }
-      }
-      
-      chrome.runtime.sendMessage({ action: 'download', url: downloadUrl, filename: userFilename });
-    };
-    
-    // Try to insert the button next to the audio player controls
-    // This might need adjustment based on the actual page structure
-    if (audioElement.parentElement) {
-      audioElement.parentElement.style.display = 'flex'; 
-      audioElement.parentElement.style.alignItems = 'center';
-      audioElement.insertAdjacentElement('afterend', buttonContainer);
+    iconSrc = chrome.runtime.getURL('images/icon48.png');
+  } catch (e) {
+    if (e.message.toLowerCase().includes("extension context invalidated")) {
+      console.warn('Download Assistant: Context invalidated.'); return;
     } else {
-      // Fallback if parentElement is not found (less likely for audio tags)
-      document.body.appendChild(buttonContainer); 
+      console.error('Download Assistant: Error getting icon URL:', e);
+      return;
     }
+  }
+
+  const downloadIconButton = document.createElement('img');
+  downloadIconButton.src = iconSrc;
+  downloadIconButton.alt = 'Download sound';
+  downloadIconButton.style.width = '24px';
+  downloadIconButton.style.height = '24px';
+  downloadIconButton.style.verticalAlign = 'middle';
+  downloadIconButton.style.marginRight = '5px';
+
+  const downloadTextLabel = document.createElement('span');
+  downloadTextLabel.textContent = 'Download';
+  downloadTextLabel.style.verticalAlign = 'middle';
+  downloadTextLabel.style.fontSize = '12px';
+
+  const downloadButtonContainer = document.createElement('span');
+  downloadButtonContainer.style.display = 'inline-flex';
+  downloadButtonContainer.style.alignItems = 'center';
+  downloadButtonContainer.style.marginLeft = '10px';
+  downloadButtonContainer.style.cursor = 'pointer';
+  downloadButtonContainer.title = 'Download Audio (Hover to help load source)';
+  downloadButtonContainer.style.border = '2px solid green';
+  downloadButtonContainer.style.padding = '2px 5px';
+  downloadButtonContainer.style.borderRadius = '4px';
+  downloadButtonContainer.appendChild(downloadIconButton);
+  downloadButtonContainer.appendChild(downloadTextLabel);
+  downloadButtonContainer.classList.add('soundsnap-download-button');
+
+  downloadButtonContainer.addEventListener('mouseenter', () => {
+    const aParentContainer = containerElement.parentElement;
+    if (!aParentContainer) return;
+    const originalPlayButton = aParentContainer.querySelector('.ojoo-button.ojoo-play');
+    if (originalPlayButton) {
+      originalPlayButton.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, cancelable: true, view: window }));
+      originalPlayButton.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window }));
+    }
+  });
+
+  downloadButtonContainer.addEventListener('mouseleave', () => {
+    const aParentContainer = containerElement.parentElement;
+    if (!aParentContainer) return;
+    const originalPlayButton = aParentContainer.querySelector('.ojoo-button.ojoo-play');
+    if (originalPlayButton) {
+      originalPlayButton.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true, cancelable: true, view: window }));
+      originalPlayButton.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, cancelable: true, view: window }));
+    }
+  });
+
+  downloadButtonContainer.onclick = async (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const currentParentContainer = containerElement.parentElement;
+    let currentAudioElement = null;
+    if (currentParentContainer) {
+        currentAudioElement = currentParentContainer.querySelector('audio');
+    }
+    if (!currentAudioElement && containerElement) {
+        currentAudioElement = containerElement.querySelector('audio');
+    }
+
+    if (!currentAudioElement) {
+        alert('Download Assistant: Could not find the associated audio player element. Please try again.');
+        return;
+    }
+
+    const src = currentAudioElement.getAttribute('src');
+    if (!src || !src.startsWith('/play?')) {
+      alert("Download Assistant: Audio source not loaded. Please try hovering over the download button for a moment, or play the sound using Soundsnap's player, then click download again.");
+      return;
+    }
+
+    const downloadUrl = `https://www.soundsnap.com${src}`;
+    const pathParts = downloadUrl.split('/');
+    const suggestedFilename = pathParts[pathParts.length - 1].split('?')[0] || "sound.mp3";
+    let userFilename = window.prompt("Enter filename (e.g., sound.mp3):", suggestedFilename);
+
+    if (userFilename === null || userFilename.trim() === "") {
+      console.log("Download cancelled by user or empty filename.");
+      return;
+    }
+    userFilename = userFilename.replace(/[<>:"/\\|?*]+/g, '_');
+    if (!userFilename.toLowerCase().endsWith('.mp3')) {
+      if (userFilename.includes('.')) {
+        userFilename = userFilename.substring(0, userFilename.lastIndexOf('.')) + '.mp3';
+      } else {
+        userFilename = userFilename + '.mp3';
+      }
+    }
+    chrome.runtime.sendMessage({ action: 'download', url: downloadUrl, filename: userFilename });
+  };
+
+  if (containerElement) {
+    containerElement.style.position = 'relative';
+    containerElement.appendChild(downloadButtonContainer);
+  } else {
+    console.warn("Download Assistant: containerElement is null, cannot append button.");
   }
 }
 
-function findAudioElements() {
-  const audioElements = document.querySelectorAll('audio');
-  audioElements.forEach(audio => {
-    // Check if a button container hasn't been added already by checking for a sibling with our class
-    const existingButtonContainer = audio.parentElement ? audio.parentElement.querySelector('.soundsnap-download-button') : null;
-    if (!audio.dataset.downloadButtonAdded && !existingButtonContainer) {
-      addDownloadButton(audio);
-      audio.dataset.downloadButtonAdded = 'true';
+function processSoundContainers() {
+  const soundContainers = document.querySelectorAll('.wave-container');
+  soundContainers.forEach(container => {
+    if (container && typeof container.querySelector === 'function' && !container.querySelector('.soundsnap-download-button')) {
+      addDownloadButtonToContainer(container);
     }
   });
 }
 
-// Initial run
-findAudioElements();
-
-// Soundsnap might load content dynamically, so we use a MutationObserver
-// to detect when new audio elements are added to the page.
-const observer = new MutationObserver((mutationsList, observer) => {
-  for(const mutation of mutationsList) {
+const observer = new MutationObserver((mutationsList) => {
+  for (const mutation of mutationsList) {
     if (mutation.type === 'childList') {
-      // Check if new nodes include audio elements or elements that might contain them
       mutation.addedNodes.forEach(node => {
         if (node.nodeType === Node.ELEMENT_NODE) {
-          if (node.tagName === 'AUDIO') {
-            const existingButtonContainer = node.parentElement ? node.parentElement.querySelector('.soundsnap-download-button') : null;
-            if (!node.dataset.downloadButtonAdded && !existingButtonContainer) {
-              addDownloadButton(node);
-              node.dataset.downloadButtonAdded = 'true';
+          if (typeof node.matches === 'function' && node.matches('.wave-container')) {
+            if (typeof node.querySelector === 'function' && !node.querySelector('.soundsnap-download-button')) {
+              addDownloadButtonToContainer(node);
             }
-          } else {
-            const nestedAudioElements = node.querySelectorAll('audio');
-            nestedAudioElements.forEach(audio => {
-               const existingButtonContainer = audio.parentElement ? audio.parentElement.querySelector('.soundsnap-download-button') : null;
-               if (!audio.dataset.downloadButtonAdded && !existingButtonContainer) {
-                addDownloadButton(audio);
-                audio.dataset.downloadButtonAdded = 'true';
+          } else if (typeof node.querySelectorAll === 'function') {
+            const nestedContainers = node.querySelectorAll('.wave-container');
+            nestedContainers.forEach(container => {
+              if (container && typeof container.querySelector === 'function' && !container.querySelector('.soundsnap-download-button')) {
+                addDownloadButtonToContainer(container);
               }
             });
           }
@@ -138,11 +144,9 @@ const observer = new MutationObserver((mutationsList, observer) => {
   }
 });
 
-// Start observing the document body for added nodes
 console.log('Download Assistant content script loaded.');
-// Check if observer is defined before trying to observe, in case of early context invalidation
 if (typeof observer !== 'undefined' && observer) {
   observer.observe(document.body, { childList: true, subtree: true });
 } else {
-  console.warn("Download Assistant: MutationObserver not initialized, possibly due to early context invalidation.");
+  console.warn("Download Assistant: MutationObserver not initialized.");
 } 
